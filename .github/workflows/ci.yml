@@ -1,0 +1,106 @@
+name: CI
+
+# Proves SwiftChat builds & tests on a macOS runner with Xcode.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 1. Fast, platform-agnostic checks: build + unit test the shared package.
+  swiftpm:
+    name: SwiftPM build & unit tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Resolve packages
+        run: swift package resolve
+
+      # Build the libraries and the Vapor relay server.
+      - name: Build package
+        run: swift build --build-tests
+
+      # Run the SwiftChatKit unit tests (crypto, models, wire, chess, SwiftData).
+      - name: Run unit tests
+        run: swift test --filter SwiftChatKitTests
+
+  # 2. Full app build via a generated Xcode project (XcodeGen).
+  xcode-apps:
+    name: Build iOS & macOS apps
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Install tools
+        run: brew install xcodegen xcbeautify
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: List schemes (sanity check)
+        run: xcodebuild -list -project SwiftChat.xcodeproj
+
+      # Build the macOS app (no signing needed for a build-only check).
+      # set -o pipefail so a build failure isn't masked by xcbeautify's exit code.
+      - name: Build macOS app
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project SwiftChat.xcodeproj \
+            -scheme SwiftChatMac \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify
+
+      # Build the iOS app for the simulator.
+      - name: Build iOS app
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project SwiftChat.xcodeproj \
+            -scheme SwiftChatIOS \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify
+
+  # 3. UI / E2E test on an iOS simulator.
+  ui-tests:
+    name: iOS UI / E2E test
+    runs-on: macos-15
+    timeout-minutes: 45
+    needs: xcode-apps
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Install tools
+        run: brew install xcodegen xcbeautify
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Run UI tests on simulator
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project SwiftChat.xcodeproj \
+            -scheme SwiftChatIOS \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify

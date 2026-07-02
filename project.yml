@@ -1,0 +1,82 @@
+name: SwiftChat
+
+options:
+  bundleIdPrefix: com.swiftchat
+  deploymentTarget:
+    iOS: "18.0"
+    macOS: "15.0"
+  createIntermediateGroups: true
+
+# The shared logic lives in the local Swift package; the app targets consume it.
+packages:
+  SwiftChat:
+    path: .
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGNING_ALLOWED: NO
+    CODE_SIGNING_REQUIRED: NO
+    CODE_SIGN_IDENTITY: ""
+
+targets:
+  # ---- iOS app ----
+  SwiftChatIOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/SwiftChatIOS
+    dependencies:
+      - package: SwiftChat
+        product: SwiftChatKit
+      - package: SwiftChat
+        product: SwiftChatUI
+    info:
+      properties:
+        UILaunchScreen: {}
+        NSPhotoLibraryUsageDescription: "SwiftChat needs access to your photos to share images."
+        NSLocalNetworkUsageDescription: "SwiftChat connects to a chat server on your local network."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+
+  # ---- macOS app ----
+  SwiftChatMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/SwiftChatMac
+    dependencies:
+      - package: SwiftChat
+        product: SwiftChatKit
+      - package: SwiftChat
+        product: SwiftChatUI
+    info:
+      properties:
+        NSPhotoLibraryUsageDescription: "SwiftChat needs access to your photos to share images."
+        NSLocalNetworkUsageDescription: "SwiftChat connects to a chat server on your local network."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+
+  # ---- iOS UI / E2E test bundle (hosted by the iOS app) ----
+  SwiftChatUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/SwiftChatUITests
+    dependencies:
+      - target: SwiftChatIOS
+
+schemes:
+  SwiftChatIOS:
+    build:
+      targets:
+        SwiftChatIOS: all
+        SwiftChatUITests: [test]
+    test:
+      targets:
+        - SwiftChatUITests
+
+  SwiftChatMac:
+    build:
+      targets:
+        SwiftChatMac: all
