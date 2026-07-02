@@ -2,7 +2,7 @@ import Foundation
 
 /// Persists image bytes to disk via FileManager and returns the RELATIVE path.
 /// Raw bytes must never enter SwiftData — only the relative path is stored.
-public final class MediaStore {
+public final class MediaStore: Sendable {
     public static let shared = MediaStore()
 
     private let fileManager = FileManager.default
