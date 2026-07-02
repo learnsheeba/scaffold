@@ -7,17 +7,19 @@ options:
     macOS: "15.0"
   createIntermediateGroups: true
 
-# The shared logic lives in the local Swift package; the app targets consume it.
-packages:
-  SwiftChat:
-    path: .
-
 settings:
   base:
     SWIFT_VERSION: "6.0"
     CODE_SIGNING_ALLOWED: NO
     CODE_SIGNING_REQUIRED: NO
     CODE_SIGN_IDENTITY: ""
+
+# Consume the local Swift package that lives in this same directory.
+# XcodeGen resolves a local package by the `path` to the folder containing
+# Package.swift; products are referenced from the target `dependencies`.
+packages:
+  SwiftChat:
+    path: "."
 
 targets:
   # ---- iOS app ----
@@ -28,9 +30,9 @@ targets:
       - path: Sources/SwiftChatIOS
     dependencies:
       - package: SwiftChat
-        product: SwiftChatKit
-      - package: SwiftChat
-        product: SwiftChatUI
+        products:
+          - SwiftChatKit
+          - SwiftChatUI
     info:
       properties:
         UILaunchScreen: {}
@@ -47,9 +49,9 @@ targets:
       - path: Sources/SwiftChatMac
     dependencies:
       - package: SwiftChat
-        product: SwiftChatKit
-      - package: SwiftChat
-        product: SwiftChatUI
+        products:
+          - SwiftChatKit
+          - SwiftChatUI
     info:
       properties:
         NSPhotoLibraryUsageDescription: "SwiftChat needs access to your photos to share images."
